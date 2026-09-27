@@ -1,0 +1,16 @@
+# Core
+Django>=5.2,<5.3            # 5.2 LTS, supported until April 2028
+djangorestframework>=3.16,<4
+drf-spectacular>=0.28       # OpenAPI 3 schema + Swagger/Redoc
+django-environ>=0.12
+django-cors-headers>=4.6
+django-filter>=24.3
+django-simple-history>=3.8  # D5: revision history on editorial models
+
+# Data & async
+psycopg[binary]>=3.2
+redis>=5.2
+celery>=5.4
+
+# Security
+argon2-cffi>=23.1           # Argon2 password hashing

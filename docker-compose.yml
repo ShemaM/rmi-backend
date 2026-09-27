@@ -1,0 +1,27 @@
+# Local infrastructure. Django runs from your virtualenv (see README).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: rmi
+      POSTGRES_USER: rmi
+      POSTGRES_PASSWORD: rmi
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rmi"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+
+volumes:
+  pgdata:
