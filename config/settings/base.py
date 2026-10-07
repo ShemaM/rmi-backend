@@ -33,6 +33,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.core",
     "apps.accounts",
+    "apps.organizations",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -134,6 +135,7 @@ REST_FRAMEWORK = {
         "user": "300/min",
         "auth_login": "5/min",
         "auth_sensitive": "10/min",
+        "organization_invite": "10/hour",
     },
 }
 
