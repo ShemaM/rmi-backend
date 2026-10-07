@@ -9,6 +9,7 @@ import uuid
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.db.models.functions import Lower
+from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
@@ -22,6 +23,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     last_name = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
 
@@ -45,3 +47,30 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
+
+    @property
+    def is_email_verified(self) -> bool:
+        return self.email_verified_at is not None
+
+    def mark_email_verified(self) -> None:
+        self.email_verified_at = timezone.now()
+        self.save(update_fields=["email_verified_at", "updated_at"])
+
+
+class EmailVerificationToken(TimeStampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="email_verification_tokens",
+    )
+    token_hash = models.CharField(max_length=64, unique=True, editable=False)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "expires_at"])]
+
+    @property
+    def is_valid(self) -> bool:
+        return self.used_at is None and self.expires_at > timezone.now()
