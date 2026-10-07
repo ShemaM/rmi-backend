@@ -51,9 +51,9 @@ A **modular monolith**: one Django project, one database, one domain per app und
 |---|---|---|---|
 | `core` | Shared base models, pagination, error envelope, health check | 1 | ✅ Scaffolded |
 | `accounts` | Users, auth, profiles, email verification, staff roles | 1 | 🟡 User model only |
-| `organizations` | Institutional profiles, seats, invitations, org admins | 1 | ⬜ |
+| `organizations` | Institutional profiles, seats, invitations, org admins | 1 | 🟡 Foundation |
 | `billing` | Plans, entitlements, subscriptions, payments, invoices | 1 | ⬜ |
-| `taxonomy` | Countries, regions, themes, multilingual tags | 1 | ⬜ |
+| `taxonomy` | Countries, regions, themes, multilingual tags | 1 | 🟡 Foundation |
 | `library` | Publications, attachments, datasets, download grants | 1 | ⬜ |
 | `opportunities` | Grants, tenders, fellowships, submissions, saved searches, digests | 1 | ⬜ |
 | `observatory` | Indicators, data points, country profiles, situation reports | 1 | ⬜ |
