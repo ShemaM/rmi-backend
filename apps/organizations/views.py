@@ -96,6 +96,70 @@ def invite_member(request, organization_id):
     )
 
 
+def _organization_admin(request, organization_id):
+    try:
+        organization = Organization.objects.get(id=organization_id, is_active=True)
+    except Organization.DoesNotExist:
+        raise ValidationError({"organization": "Organization not found."}) from None
+    if not IsOrganizationAdmin().has_object_permission(request, None, organization):
+        raise PermissionDenied("Organization administrator access is required.")
+    return organization
+
+
+@extend_schema(tags=["organizations"], responses={204: None})
+@api_view(["DELETE"])
+@permission_classes([IsVerifiedUser])
+def revoke_invitation(request, organization_id, invitation_id):
+    organization = _organization_admin(request, organization_id)
+    with transaction.atomic():
+        try:
+            invitation = OrganizationInvitation.objects.select_for_update().get(
+                id=invitation_id, organization=organization
+            )
+        except OrganizationInvitation.DoesNotExist:
+            raise ValidationError({"invitation": "Invitation not found."}) from None
+        if not invitation.is_valid:
+            raise ValidationError({"invitation": "Only pending invitations can be revoked."})
+        invitation.revoked_at = timezone.now()
+        invitation.save(update_fields=["revoked_at", "updated_at"])
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(tags=["organizations"], responses={204: None})
+@api_view(["DELETE"])
+@permission_classes([IsVerifiedUser])
+def deactivate_member(request, organization_id, membership_id):
+    organization = _organization_admin(request, organization_id)
+    requester_membership = OrganizationMembership.objects.get(
+        organization=organization, user=request.user, is_active=True
+    )
+    with transaction.atomic():
+        try:
+            membership = OrganizationMembership.objects.select_for_update().get(
+                id=membership_id, organization=organization
+            )
+        except OrganizationMembership.DoesNotExist:
+            raise ValidationError({"membership": "Membership not found."}) from None
+        if not membership.is_active:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if membership.role == OrganizationMembership.Role.OWNER:
+            owner_count = OrganizationMembership.objects.filter(
+                organization=organization,
+                role=OrganizationMembership.Role.OWNER,
+                is_active=True,
+            ).count()
+            if owner_count <= 1:
+                raise ValidationError({"membership": "The last active owner cannot be removed."})
+            if (
+                membership.user_id != request.user.id
+                and requester_membership.role != OrganizationMembership.Role.OWNER
+            ):
+                raise PermissionDenied("Only an owner can remove another owner.")
+        membership.is_active = False
+        membership.save(update_fields=["is_active", "updated_at"])
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @extend_schema(
     tags=["organizations"],
     request=InvitationAcceptSerializer,

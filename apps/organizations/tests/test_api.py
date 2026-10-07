@@ -133,3 +133,56 @@ def test_invitation_rejects_expired_and_wrong_email():
     assert response.status_code == 400
     invitation.refresh_from_db()
     assert invitation.accepted_at is None
+
+
+@pytest.mark.django_db
+def test_admin_can_revoke_invitation_and_deactivate_member_but_not_last_owner():
+    owner = verified_user("owner3@example.com")
+    member = verified_user("member3@example.com")
+    organization = Organization.objects.create(name="RMI Institute 3")
+    owner_membership = OrganizationMembership.objects.create(
+        organization=organization, user=owner, role=OrganizationMembership.Role.OWNER
+    )
+    member_membership = OrganizationMembership.objects.create(
+        organization=organization, user=member, role=OrganizationMembership.Role.MEMBER
+    )
+    invitation = OrganizationInvitation.objects.create(
+        organization=organization,
+        email="pending@example.com",
+        role="member",
+        invited_by=owner,
+        token_hash=OrganizationInvitation.hash_token("pending-token"),
+        expires_at=timezone.now() + timedelta(days=1),
+    )
+    client = APIClient()
+    client.force_authenticate(owner)
+
+    response = client.delete(
+        reverse(
+            "v1:organizations:revoke-invitation",
+            args=[organization.id, invitation.id],
+        )
+    )
+    assert response.status_code == 204
+    invitation.refresh_from_db()
+    assert invitation.revoked_at is not None
+
+    response = client.delete(
+        reverse(
+            "v1:organizations:deactivate-member",
+            args=[organization.id, member_membership.id],
+        )
+    )
+    assert response.status_code == 204
+    member_membership.refresh_from_db()
+    assert not member_membership.is_active
+
+    response = client.delete(
+        reverse(
+            "v1:organizations:deactivate-member",
+            args=[organization.id, owner_membership.id],
+        )
+    )
+    assert response.status_code == 400
+    owner_membership.refresh_from_db()
+    assert owner_membership.is_active
