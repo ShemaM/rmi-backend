@@ -54,7 +54,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
     def mark_email_verified(self) -> None:
         self.email_verified_at = timezone.now()
-        self.save(update_fields=["email_verified_at", "updated_at"])
+        self.is_active = True
+        self.save(update_fields=["email_verified_at", "is_active", "updated_at"])
 
 
 class EmailVerificationToken(TimeStampedModel):

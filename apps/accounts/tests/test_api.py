@@ -21,10 +21,11 @@ class TestRegistration:
 
         assert response.status_code == 201
         assert response.json()["email"] == "jane.doe@example.com"
+        assert response.json()["email_verified"] is False
         assert "password" not in response.json()
-        assert User.objects.get(email="jane.doe@example.com").check_password(
-            "A-strong-password-123"
-        )
+        registered = User.objects.get(email="jane.doe@example.com")
+        assert registered.check_password("A-strong-password-123")
+        assert not registered.is_active
 
     def test_rejects_weak_password(self):
         response = APIClient().post(
@@ -66,3 +67,16 @@ def test_login_rejects_invalid_credentials(user):
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "validation_error"
+
+
+@pytest.mark.django_db
+def test_login_rejects_unverified_user():
+    user = User.objects.create_user("unverified@example.com", "Str0ng-pass-123")
+    response = APIClient().post(
+        reverse("v1:accounts:login"),
+        {"email": user.email, "password": "Str0ng-pass-123"},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "verify your email" in str(response.json())

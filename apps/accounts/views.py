@@ -11,10 +11,11 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from .models import EmailVerificationToken, User
 from .serializers import (
@@ -25,6 +26,14 @@ from .serializers import (
     RegistrationSerializer,
     UserSerializer,
 )
+
+
+class LoginThrottle(ScopedRateThrottle):
+    scope = "auth_login"
+
+
+class SensitiveAuthThrottle(ScopedRateThrottle):
+    scope = "auth_sensitive"
 
 
 def _send_verification_email(user):
@@ -52,6 +61,7 @@ def _send_verification_email(user):
 )
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([SensitiveAuthThrottle])
 def register(request):
     serializer = RegistrationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -67,6 +77,7 @@ def register(request):
 )
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([LoginThrottle])
 def login_view(request):
     serializer = LoginSerializer(data=request.data, context={"request": request})
     serializer.is_valid(raise_exception=True)
@@ -97,6 +108,7 @@ def me(request):
 )
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([SensitiveAuthThrottle])
 def verify_email(request):
     serializer = EmailVerificationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -122,6 +134,7 @@ def verify_email(request):
 )
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([SensitiveAuthThrottle])
 def password_reset_request(request):
     serializer = PasswordResetRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -148,6 +161,7 @@ def password_reset_request(request):
 )
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([SensitiveAuthThrottle])
 def password_reset_confirm(request):
     serializer = PasswordResetConfirmSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)

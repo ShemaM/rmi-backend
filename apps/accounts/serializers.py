@@ -10,8 +10,10 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name")
+        fields = ("id", "email", "first_name", "last_name", "email_verified")
         read_only_fields = fields
+
+    email_verified = serializers.BooleanField(source="is_email_verified", read_only=True)
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -27,7 +29,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        return User.objects.create_user(password=password, **validated_data)
+        return User.objects.create_user(is_active=False, password=password, **validated_data)
 
 
 class LoginSerializer(serializers.Serializer):
@@ -48,6 +50,10 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             raise serializers.ValidationError(
                 {"non_field_errors": ["This account is inactive."]}
+            )
+        if not user.is_email_verified:
+            raise serializers.ValidationError(
+                {"non_field_errors": ["Please verify your email address before logging in."]}
             )
         attrs["user"] = user
         return attrs
